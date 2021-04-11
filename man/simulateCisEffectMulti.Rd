@@ -17,7 +17,7 @@ simulateCisEffectMulti(n_i, n_j, maf, prob_ref, gene_pars)
 ref allele of each gene if the test snp is heterogeneous.
 If \code{length(prob_ref) == 1} then all genes share the same \code{prob_ref}}
 
-\item{gene_pars}{A vector of length \code{n_j} or \code{1} specifying
+\item{gene_pars}{A list of length \code{n_j} or \code{1} specifying
 gene-level statistics. Each element should be a list containing parameters
 used in \code{\link{simulateCisEffectSingle}}, including phi, prob_as, theta,
 baseline, and r. If \code{length(gene_pars) == 1} then all \code{n_j} genes

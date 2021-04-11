@@ -159,7 +159,7 @@ simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, bas
 #'
 #' @param n_i Numbet of samples
 #' @param n_j Number of genes
-#' @param gene_pars A vector of length \code{n_j} or \code{1} specifying
+#' @param gene_pars A list of length \code{n_j} or \code{1} specifying
 #' gene-level statistics. Each element should be a list containing parameters
 #' used in \code{\link{simulateReadCountsSingle}}.
 #' If \code{length(gene_pars) == 1} then all \code{n_j} genes share the same set
@@ -193,8 +193,8 @@ simulateReadCountsMulti <- function(n_i, n_j, gene_pars) {
     return(
       rbbinom(
         n = n_i, size = n_as[,j],
-        alpha = prob_alt * (1 / theta - 1),
-        beta = (1 - prob_alt) * (1 / theta - 1)
+        alpha = prob_alt * (theta - 1),
+        beta = (1 - prob_alt) * (theta - 1)
       )
     )
   })
@@ -251,7 +251,7 @@ simulateGenotypeMulti <- function(n_i, n_j, maf, prob_ref) {
 #'
 #' @inheritParams simulateReadCountsMulti
 #' @inheritParams simulateGenotypeMulti
-#' @param gene_pars A vector of length \code{n_j} or \code{1} specifying
+#' @param gene_pars A list of length \code{n_j} or \code{1} specifying
 #' gene-level statistics. Each element should be a list containing parameters
 #' used in \code{\link{simulateCisEffectSingle}}, including phi, prob_as, theta,
 #' baseline, and r. If \code{length(gene_pars) == 1} then all \code{n_j} genes
@@ -259,16 +259,6 @@ simulateGenotypeMulti <- function(n_i, n_j, maf, prob_ref) {
 #'
 #' @export
 simulateCisEffectMulti <- function(n_i, n_j, maf, prob_ref, gene_pars) {
-  ## n_i: number of samples
-  ## maf: minor allele frequency of the test snp
-  ## prob_ref: probability of the test snp on the ref allele of the target gene
-  ##   if the test snp is heterogeneous
-  ## gene_pars = list(list(phi, prob_as, theta, baseline, r), ...)
-  ## T ~ NB(mu, phi)
-  ## A_alt ~ BB(T * prob_as = N, prob_alt, theta)
-  ## prob_as: proportion of allele-specific reads = N/T
-  ## prob_alt: proportion of alt-allele reads in allele-specific reads =
-  ##    A_alt / (A_ref + A_alt)
 
   if (length(gene_pars) == 1) {
     gene_pars <- rep(gene_pars, n_j)
@@ -316,7 +306,7 @@ simulateCisEffectMulti <- function(n_i, n_j, maf, prob_ref, gene_pars) {
       log1p_T = log1p(Y$TotalReadCounts),
       A_ref = Y$RefCounts,
       A_alt = Y$AltCounts,
-      Is_ase_het = Y$RefCounts * Y$AltCounts != 0
+      Is_ase_het = as.matrix(Y$RefCounts * Y$AltCounts != 0) * 1
     )
   )
   sim$data$logit_pi_alt <- ifelse(

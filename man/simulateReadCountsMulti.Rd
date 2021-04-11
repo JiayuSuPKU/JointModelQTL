@@ -11,7 +11,7 @@ simulateReadCountsMulti(n_i, n_j, gene_pars)
 
 \item{n_j}{Number of genes}
 
-\item{gene_pars}{A vector of length \code{n_j} or \code{1} specifying
+\item{gene_pars}{A list of length \code{n_j} or \code{1} specifying
 gene-level statistics. Each element should be a list containing parameters
 used in \code{\link{simulateReadCountsSingle}}.
 If \code{length(gene_pars) == 1} then all \code{n_j} genes share the same set

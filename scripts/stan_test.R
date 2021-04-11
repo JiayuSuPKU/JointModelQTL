@@ -6,6 +6,13 @@ library(ggsci)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
+Y <- simulateCisEffectSingle(
+  n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
+  phi = 3, theta = 0.01, baseline = 3, r = 1.5)
+
+fit_trc <- stan(file = "./src/stan_models/lognorm_trc.stan", data = Y$data)
+fit_trcase <- stan(file = "./src/stan_models/lognorm_trcase.stan", data = Y$data)
+
 estimateR <- function(...) {
   # helper function for testing under multiple scenarios
 
@@ -118,3 +125,12 @@ r_est_b %>% ggplot(aes(x = r_est, group = model, color = model)) +
   labs(title = "n_i=1000, maf=0.1, r=1.5, phi=3, theta=0.01") +
   theme_bw() +
   scale_color_npg()
+
+
+# J > 1, K = 1, L = 1
+
+Y <- simulateCisEffectMulti(
+  n_i = 1000, n_j = 1, maf = 0.1, prob_ref = 0.5,
+  gene_pars = list(list(prob_as = 0.5, phi = 3, theta = 0.01, baseline = 3, r = 1.5)))
+
+fit_trc <- stan(file = "./src/stan_models/lognorm_trc_j.stan", data = Y$data)

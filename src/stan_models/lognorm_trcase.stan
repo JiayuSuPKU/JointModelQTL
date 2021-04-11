@@ -19,8 +19,6 @@ data {
   vector[I] G; // genotype
   vector[I] P; // phasing
   vector<lower=0>[I] log1p_T; // log1p of total read counts
-  vector<lower=0>[I] A_ref; // ref allele read counts
-  vector<lower=0>[I] A_alt; // alt allele read counts
   vector[I] Is_ase_het; // whether the gene region is heterogeneous
   vector[I] logit_pi_alt; // logit of the proportion of alt reads
 }

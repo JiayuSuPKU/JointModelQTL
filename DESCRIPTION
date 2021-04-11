@@ -1,15 +1,11 @@
 Package: JointModel
-Title: What the Package Does (One Line, Title Case)
+Title: A Joint Model of Total and Allele-Specific Expression QTL
 Version: 0.0.0.9000
-Authors@R: 
-    person(given = "First",
-           family = "Last",
-           role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Author: Jiayu Su 
+Maintainer: Jiayu Su <jiayu_su@outlook.com>
+Description: This package describe a joint model to infer cis-regulatory eQTLs. It also provides helper functions to generate simulated data. 
+License: MIT + file LICENSE
+Imports: extraDistr
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

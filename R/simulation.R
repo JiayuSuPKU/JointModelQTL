@@ -1,38 +1,65 @@
-library(extraDistr)
-
-# J = 1, K = 1, L = 1
-
+#' Simulate read for one gene
+#'
+#' This function simulates read counts data from negative binomial (total read counts)
+#' and beta-binomial (allele-specific read counts) distributions for one gene
+#'
+#' J=1, K=1, L=1
+#'
+#' \code{T ~ NB(mu, phi)}
+#' \code{A_alt ~ BB(T * prob_as := N_as, prob_alt, theta)}
+#'
+#' @param n_i Number of samples
+#' @param mu Expected number of total reads
+#' @param phi Overdispersion term in negative-binomial
+#' @param prob_as Proportion of allele-specific reads
+#' @param prob_alt Proportion of alt-allele reads in allele-specific reads
+#' @param theta Overdispersion term in beta-binomial
+#'
+#' @importFrom extraDistr rbbinom
+#' @importFrom stats rbinom rnbinom runif
+#'
+#' @export
 simulateReadCountsSingle <- function(n_i, mu, phi, prob_as, prob_alt, theta) {
-  ## n_i: number of samples
-  ## T ~ NB(mu, phi)
-  ## A_alt ~ BB(T * prob_as = N, prob_alt, theta)
-  ## prob_as: proportion of allele-specific reads = N/T
-  ## prob_alt: proportion of alt-allele reads in allele-specific reads =
-  ##    A_alt / (A_ref + A_alt)
 
+  # total read counts
   trc <- rnbinom(n = n_i, mu = mu, size = phi)
+
+  # allele-specific read counts
   n_as <- round(trc * prob_as)
+
+  # alternative allele read counts
   a_alt <- rbbinom(
     n = n_i, size = n_as,
-    alpha = prob_alt * (1 / theta - 1),
-    beta = (1 - prob_alt) * (1 / theta - 1)
+    alpha = prob_alt * (theta - 1),
+    beta = (1 - prob_alt) * (theta - 1)
   )
 
   return(list(TotalReadCounts = trc, RefCounts = n_as - a_alt, AltCounts = a_alt))
 }
 
+
+#' Simulate genotype for one gene-snp pair
+#'
+#' This function simulates genotype G and phasing P for one gene-snp pair
+#'
+#' J=1, K=1, L=1
+#'
+#' @param n_i Number of samples
+#' @param maf Minor allele frequency of the test snp
+#' @param prob_ref Probability of the test snp on the ref allele of the target
+#' gene if the test snp is heterogeneous
+#'
+#' @export
 simulateGenotypeSingle <- function(n_i, maf, prob_ref) {
-  ## n_i: number of samples
-  ## maf: minor allele frequency of the test snp
-  ## prob_ref: probability of the test snp on the ref allele of the target gene
-  ##   if the test snp is heterogeneous
 
   maf <- ifelse(maf <= 0.5, maf, 1 - maf)
+
+  # simulate two loci
   h1 <- rbinom(n = n_i, size = 1, prob = maf)
   h2 <- rbinom(n = n_i, size = 1, prob = maf)
-
   # G: n_i by 1, genotype matrix
   G <- h1 + h2
+
   # P: n_i by 1, phasing matrix
   P <- ifelse(G == 1, 1, 0)
   is_cis <- (runif(n_i) <= prob_ref) * 2 - 1
@@ -41,10 +68,26 @@ simulateGenotypeSingle <- function(n_i, maf, prob_ref) {
   return(list(Genotype = G, Phasing = P))
 }
 
-logistic <- function(x) {
+
+softmax <- function(x) {
   return(exp(x) / (1 + exp(x)))
 }
 
+
+#' Simulate cis-regulatory effect for one gene-snp pair
+#'
+#' This function simulates genotype G, phasing P, and expression
+#' (total and allele-specific) profiles for one gene-snp pair
+#'
+#' J=1, K=1, L=1
+#'
+#' @inheritParams simulateReadCountsSingle
+#' @inheritParams simulateGenotypeSingle
+#' @param baseline Baseline expression (under ref/ref scenario)
+#' @param r Cis-regulatory effect defined as the log read ratio under alt/alt
+#' and ref/ref scenario
+#'
+#' @export
 simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, baseline, r) {
   ## n_i: number of samples
   ## maf: minor allele frequency of the test snp
@@ -68,14 +111,16 @@ simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, bas
   # simulate expression profile
   Y <- simulateReadCountsSingle(
     n_i = n_i, mu = exp(log_mu), phi = phi, prob_as = prob_as,
-    prob_alt = logistic(logit_prob_alt), theta = theta
+    prob_alt = softmax(logit_prob_alt), theta = theta
   )
 
   sim <- list(
-    pars = list(
+    genotype_pars = list(
       n_i = n_i,
       maf = maf,
-      prob_ref = prob_ref,
+      prob_ref = prob_ref
+    ),
+    gene_pars = list(
       prob_as = prob_as,
       phi = phi,
       theta = theta,
@@ -93,6 +138,7 @@ simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, bas
       Is_ase_het = Y$RefCounts * Y$AltCounts != 0
     )
   )
+
   sim$data$logit_pi_alt <- ifelse(
     !sim$data$Is_ase_het, 0, log(sim$data$A_alt / sim$data$A_ref)
   )
@@ -100,29 +146,47 @@ simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, bas
   return(sim)
 }
 
+
+#' Simulate read for multiple genes
+#'
+#' This function simulates read counts data from negative binomial (total read counts)
+#' and beta-binomial (allele-specific read counts) distributions for multiple genes
+#'
+#' J>=1, K=1, L=1
+#'
+#' \code{T ~ NB(mu, phi)}
+#' \code{A_alt ~ BB(T * prob_as := N_as, prob_alt, theta)}
+#'
+#' @param n_i Numbet of samples
+#' @param n_j Number of genes
+#' @param gene_pars A vector of length \code{n_j} or \code{1} specifying
+#' gene-level statistics. Each element should be a list containing parameters
+#' used in \code{\link{simulateReadCountsSingle}}.
+#' If \code{length(gene_pars) == 1} then all \code{n_j} genes share the same set
+#' of parameters.
+#'
+#' @importFrom extraDistr rbbinom
+#' @importFrom stats rbinom rnbinom runif
+#'
+#' @export
 simulateReadCountsMulti <- function(n_i, n_j, gene_pars) {
-  ## n_i: number of samples
-  ## n_j: number of genes
-  ## gene_pars = list(list(mu, phi, prob_as, prob_alt, theta), ...)
-  ## T ~ NB(mu, phi)
-  ## A_alt ~ BB(T * prob_as = N, prob_alt, theta)
-  ## prob_as: proportion of allele-specific reads = N/T
-  ## prob_alt: proportion of alt-allele reads in allele-specific reads =
-  ##    A_alt / (A_ref + A_alt)
 
   if (length(gene_pars) == 1) {
     gene_pars <- rep(gene_pars, n_j)
   }
 
+  # total read counts
   trc <- sapply(gene_pars, function(l) {
     return(rnbinom(n = n_i, mu = l[["mu"]], size = l[["phi"]]))
   })
 
+  # allele-specific read counts
   prob_as <- sapply(gene_pars, function(l) {
     return(l[["prob_as"]])
   })
   n_as <- round(t(t(trc) * prob_as))
 
+  # alternative allele read counts
   a_alt <- sapply(1:n_j, function(j) {
     prob_alt <- gene_pars[[j]][["prob_alt"]]
     theta <- gene_pars[[j]][["theta"]]
@@ -135,22 +199,33 @@ simulateReadCountsMulti <- function(n_i, n_j, gene_pars) {
     )
   })
 
-
   return(list(TotalReadCounts = trc, RefCounts = n_as - a_alt, AltCounts = a_alt))
 }
 
+
+#' Simulate genotype for multi-to-one gene-snp pairs
+#'
+#' This function simulates genotype G and phasing P for multi-to-one gene-snp pairs
+#'
+#' J>=1, K=1, L=1
+#'
+#' @param n_i Number of samples
+#' @param n_j Number of genes
+#' @param maf Minor allele frequency of the test snp
+#' @param prob_ref A vector specifying the probability of the test snp on the
+#' ref allele of each gene if the test snp is heterogeneous.
+#' If \code{length(prob_ref) == 1} then all genes share the same \code{prob_ref}
+#'
+#' @export
 simulateGenotypeMulti <- function(n_i, n_j, maf, prob_ref) {
-  ## n_i: number of samples
-  ## n_j: number of genes
-  ## maf: minor allele frequency of the test snp
-  ## prob_ref: probability of the test snp on the ref allele of the target gene
-  ##   if the test snp is heterogeneous
 
   if (length(prob_ref) == 1) {
     prob_ref <- rep(prob_ref, n_j)
   }
 
   maf <- ifelse(maf <= 0.5, maf, 1 - maf)
+
+  # simulate two loci
   h1 <- rbinom(n = n_i, size = 1, prob = maf)
   h2 <- rbinom(n = n_i, size = 1, prob = maf)
 
@@ -166,6 +241,23 @@ simulateGenotypeMulti <- function(n_i, n_j, maf, prob_ref) {
   return(list(Genotype = G, Phasing = P))
 }
 
+
+#' Simulate cis-regulatory effect for multi-to-one gene-snp pairs
+#'
+#' This function simulates genotype G, phasing P, and expression
+#' (total and allele-specific) profiles for multi-to-one gene-snp pairs
+#'
+#' J>=1, K=1, L=1
+#'
+#' @inheritParams simulateReadCountsMulti
+#' @inheritParams simulateGenotypeMulti
+#' @param gene_pars A vector of length \code{n_j} or \code{1} specifying
+#' gene-level statistics. Each element should be a list containing parameters
+#' used in \code{\link{simulateCisEffectSingle}}, including phi, prob_as, theta,
+#' baseline, and r. If \code{length(gene_pars) == 1} then all \code{n_j} genes
+#' share the same set of parameters.
+#'
+#' @export
 simulateCisEffectMulti <- function(n_i, n_j, maf, prob_ref, gene_pars) {
   ## n_i: number of samples
   ## maf: minor allele frequency of the test snp
@@ -202,7 +294,7 @@ simulateCisEffectMulti <- function(n_i, n_j, maf, prob_ref, gene_pars) {
 
     gene_pars_mu <- append(gene_pars_mu, list(list(
       mu = exp(log_mu), phi = phi, prob_as = prob_as,
-      prob_alt = logistic(logit_prob_alt), theta = theta
+      prob_alt = softmax(logit_prob_alt), theta = theta
     )))
   }
 

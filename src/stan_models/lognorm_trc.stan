@@ -17,7 +17,6 @@ data {
   // int<lower=0> K; // number of test snps
   // int<lower=0> L; // number of exonic snps 
   vector[I] G; // genotype
-  vector[I] P; // phasing
   vector<lower=0>[I] log1p_T; // log1p of total read counts
 }
 

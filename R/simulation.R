@@ -280,7 +280,7 @@ simulateCisEffectMulti <- function(n_i, n_j, maf, prob_ref, gene_pars) {
       ifelse(meta$Genotype == 2, r, 0)
 
     # add genetic effects on allelic imbalance
-    logit_prob_alt <- meta$Phasing * r
+    logit_prob_alt <- meta$Phasing[,j] * r
 
     gene_pars_mu <- append(gene_pars_mu, list(list(
       mu = exp(log_mu), phi = phi, prob_as = prob_as,

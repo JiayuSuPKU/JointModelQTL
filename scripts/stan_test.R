@@ -8,7 +8,7 @@ rstan_options(auto_write = TRUE)
 
 Y <- simulateCisEffectSingle(
   n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
-  phi = 3, theta = 0.01, baseline = 3, r = 1.5)
+  phi = 3, theta = 100, baseline = 3, r = 1.5)
 
 fit_trc <- stan(file = "./src/stan_models/lognorm_trc.stan", data = Y$data)
 fit_trcase <- stan(file = "./src/stan_models/lognorm_trcase.stan", data = Y$data)
@@ -36,7 +36,7 @@ estimateR <- function(...) {
 
 r_est_theta <- data.frame()
 
-for (theta in c(0.01, 0.03, 0.1, 0.3)) {
+for (theta in c(100, 30, 10, 3)) {
   r <- estimateR(
     n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
     phi = 3, theta = theta, baseline = 3, r = 1.5
@@ -62,7 +62,7 @@ for (n_i in c(100, 300, 1000)) {
   for (maf in c(0.05, 0.1, 0.3)) {
     r <- estimateR(
       n_i = n_i, maf = maf, prob_ref = 0.5, prob_as = 0.5,
-      phi = 3, theta = 0.01, baseline = 3, r = 1.5
+      phi = 3, theta = 30, baseline = 3, r = 1.5
     )
     r <- r %>% mutate(n_i = n_i, maf = maf)
 
@@ -78,7 +78,7 @@ r_est_ni_maf %>% ggplot(aes(x = r_est, group = model, color = model)) +
   ) +
   geom_vline(xintercept = 1.5, color = "black") +
   geom_density(size = 1) +
-  labs(title = "b=3, phi=3, theta=0.01") +
+  labs(title = "b=3, phi=3, theta=30") +
   theme_bw() +
   scale_color_npg()
 
@@ -89,7 +89,7 @@ r_est_r <- data.frame()
 for (r_true in c(0.75, 1, 1.25, 1.5, 1.75, 2)) {
   r <- estimateR(
     n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
-    phi = 3, theta = 0.01, baseline = 3, r = r_true
+    phi = 3, theta = 30, baseline = 3, r = r_true
   )
   r <- r %>% mutate(r_true = r_true)
 
@@ -100,7 +100,7 @@ r_est_r %>% ggplot(aes(x = r_est, group = model, color = model)) +
   facet_wrap(~r_true, labeller = labeller(r_true = label_both)) +
   geom_vline(aes(xintercept = r_true), color = "black") +
   geom_density(size = 1) +
-  labs(title = "n_i=1000, maf=0.1, b=3, phi=3, theta=0.01") +
+  labs(title = "n_i=1000, maf=0.1, b=3, phi=3, theta=30") +
   theme_bw() +
   scale_color_npg()
 
@@ -111,7 +111,7 @@ r_est_b <- data.frame()
 for (b in c(0, 1, 3, 5, 7, 9)) {
   r <- estimateR(
     n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
-    phi = 3, theta = 0.01, baseline = b, r = 1.5
+    phi = 3, theta = 30, baseline = b, r = 1.5
   )
   r <- r %>% mutate(b = b)
 
@@ -122,7 +122,7 @@ r_est_b %>% ggplot(aes(x = r_est, group = model, color = model)) +
   facet_wrap(~b, labeller = labeller(b = label_both)) +
   geom_vline(xintercept = 1.5, color = "black") +
   geom_density(size = 1) +
-  labs(title = "n_i=1000, maf=0.1, r=1.5, phi=3, theta=0.01") +
+  labs(title = "n_i=1000, maf=0.1, r=1.5, phi=3, theta=30") +
   theme_bw() +
   scale_color_npg()
 
@@ -130,7 +130,10 @@ r_est_b %>% ggplot(aes(x = r_est, group = model, color = model)) +
 # J > 1, K = 1, L = 1
 
 Y <- simulateCisEffectMulti(
-  n_i = 1000, n_j = 1, maf = 0.1, prob_ref = 0.5,
-  gene_pars = list(list(prob_as = 0.5, phi = 3, theta = 0.01, baseline = 3, r = 1.5)))
+  n_i = 1000, n_j = 10, maf = 0.1, prob_ref = 0.5,
+  gene_pars = list(list(prob_as = 0.5, phi = 3, theta = 30, baseline = 3, r = 1.5)))
 
 fit_trc <- stan(file = "./src/stan_models/lognorm_trc_j.stan", data = Y$data)
+fit_trcase <- stan(file = "./src/stan_models/lognorm_trcase_j.stan", data = Y$data)
+
+summary(fit_trcase)

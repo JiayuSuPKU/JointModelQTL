@@ -86,9 +86,13 @@ softmax <- function(x) {
 #' @param baseline Baseline expression (under ref/ref scenario)
 #' @param r Cis-regulatory effect defined as the log read ratio under alt/alt
 #' and ref/ref scenario
+#' @param p_error A vector of phasing error rate of the gene pair in each
+#' sample. If \code{length(p_error) == 1} then all samples share the same
+#' phasing error rate
 #'
 #' @export
-simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, baseline, r) {
+simulateCisEffectSingle <- function(
+  n_i, maf, prob_ref, phi, prob_as, theta, baseline, r, p_error = NULL) {
   ## n_i: number of samples
   ## maf: minor allele frequency of the test snp
   ## prob_ref: probability of the test snp on the ref allele of the target gene
@@ -114,6 +118,17 @@ simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, bas
     prob_alt = softmax(logit_prob_alt), theta = theta
   )
 
+  # consider phasing error for each sample
+  if (is.null(p_error)){
+    p_error <- rep(0, n_i)
+  } else{
+    if (length(p_error) == 1)
+      p_error <- rep(p_error, n_i)
+    # reverse P if error occurs
+    is_p_error <- runif(n_i) <= p_error
+    meta$Phasing[is_p_error] <- (-1) *meta$Phasing[is_p_error]
+  }
+
   sim <- list(
     genotype_pars = list(
       n_i = n_i,
@@ -130,6 +145,7 @@ simulateCisEffectSingle <- function(n_i, maf, prob_ref, phi, prob_as, theta, bas
     data = list(
       I = n_i,
       P = meta$Phasing,
+      P_error = p_error,
       G = meta$Genotype,
       T = Y$TotalReadCounts,
       log1p_T = log1p(Y$TotalReadCounts),

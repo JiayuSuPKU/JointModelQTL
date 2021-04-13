@@ -4,7 +4,17 @@
 \alias{simulateCisEffectSingle}
 \title{Simulate cis-regulatory effect for one gene-snp pair}
 \usage{
-simulateCisEffectSingle(n_i, maf, prob_ref, phi, prob_as, theta, baseline, r)
+simulateCisEffectSingle(
+  n_i,
+  maf,
+  prob_ref,
+  phi,
+  prob_as,
+  theta,
+  baseline,
+  r,
+  p_error = NULL
+)
 }
 \arguments{
 \item{n_i}{Number of samples}
@@ -24,6 +34,10 @@ gene if the test snp is heterogeneous}
 
 \item{r}{Cis-regulatory effect defined as the log read ratio under alt/alt
 and ref/ref scenario}
+
+\item{p_error}{A vector of phasing error rate of the gene pair in each
+sample. If \code{length(p_error) == 1} then all samples share the same
+phasing error rate}
 }
 \description{
 This function simulates genotype G, phasing P, and expression

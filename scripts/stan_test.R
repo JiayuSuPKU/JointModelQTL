@@ -137,3 +137,35 @@ fit_trc <- stan(file = "./src/stan_models/lognorm_trc_j.stan", data = Y$data)
 fit_trcase <- stan(file = "./src/stan_models/lognorm_trcase_j.stan", data = Y$data)
 
 summary(fit_trcase)
+
+
+# phasing error
+
+Y <- simulateCisEffectSingle(
+  n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
+  phi = 3, theta = 100, baseline = 3, r = 1.5, p_error = 0.1)
+
+fit_ase <- stan(
+  file = "./src/stan_models/lognorm_with_phasing_error/ase.stan",
+  data = Y$data
+)
+
+fit_ase_mix_known <- stan(
+  file = "./src/stan_models/lognorm_with_phasing_error/ase_mixture_known_error.stan",
+  data = Y$data
+) # p_error for each sample
+
+fit_ase_mix_unknown <- stan(
+  file = "./src/stan_models/lognorm_with_phasing_error/ase_mixture_unknown_error.stan",
+  data = Y$data
+) # not possible to have p_error for each sample
+
+fit_ase_expect_known <- stan(
+  file = "./src/stan_models/lognorm_with_phasing_error/ase_expect_known_error.stan",
+  data = Y$data
+) # p_error for each sample
+
+fit_ase_expect_unknown <- stan(
+  file = "./src/stan_models/lognorm_with_phasing_error/ase_expect_unknown_error.stan",
+  data = Y$data
+) # not possible to have p_error for each sample

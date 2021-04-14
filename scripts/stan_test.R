@@ -1,11 +1,15 @@
 source("./R/simulation.R")
 
-library(rstan)
-library(dplyr)
+library(tidyverse)
 library(ggsci)
 library(ggrepel)
+library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
+
+## J = 1, K = 1, L = 1
+
+# estimate R
 
 Y <- simulateCisEffect.s2s(
   n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
@@ -23,8 +27,8 @@ estimateR <- function(...) {
   fit_trc <- stan(file = "./src/stan_models/lognorm_trc.stan", data = Y$data)
   fit_trcase <- stan(file = "./src/stan_models/lognorm_trcase.stan", data = Y$data)
 
-  r_est_trc <- extract(fit_trc, "r")[[1]]
-  r_est_trcase <- extract(fit_trcase, "r")[[1]]
+  r_est_trc <- rstan::extract(fit_trc, "r")[[1]]
+  r_est_trcase <- rstan::extract(fit_trcase, "r")[[1]]
 
   return(
     data.frame(
@@ -34,7 +38,7 @@ estimateR <- function(...) {
   )
 }
 
-# theta
+# theta's effect on R_est
 
 r_est_theta <- data.frame()
 
@@ -56,7 +60,7 @@ r_est_theta %>% ggplot(aes(x = r_est, group = model, color = model)) +
   theme_bw() +
   scale_color_npg()
 
-# sample size and maf
+# sample size and maf's effect on R_est
 
 r_est_ni_maf <- data.frame()
 
@@ -84,7 +88,7 @@ r_est_ni_maf %>% ggplot(aes(x = r_est, group = model, color = model)) +
   theme_bw() +
   scale_color_npg()
 
-# effect size
+# effect size's effect on r_est
 
 r_est_r <- data.frame()
 
@@ -106,7 +110,7 @@ r_est_r %>% ggplot(aes(x = r_est, group = model, color = model)) +
   theme_bw() +
   scale_color_npg()
 
-# baseline expression
+# baseline expression's effect on R_est
 
 r_est_b <- data.frame()
 
@@ -129,7 +133,7 @@ r_est_b %>% ggplot(aes(x = r_est, group = model, color = model)) +
   scale_color_npg()
 
 
-# weighted ase
+# using weighted ase when baseline or effect size is small
 
 estimateR.weighted <- function(n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
                                phi = 3, theta = 30, baseline = 1, r = 1.5) {
@@ -145,7 +149,7 @@ estimateR.weighted <- function(n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 
 
   return(
     data.frame(
-      r_est = c(extract(fit_ase, "r")[[1]], extract(fit_weighted_ase, "r")[[1]]),
+      r_est = c(rstan::extract(fit_ase, "r")[[1]], rstan::extract(fit_weighted_ase, "r")[[1]]),
       model = rep(c("ase", "weighted ase"), each = 4000),
       baseline = rep(baseline, 8000),
       r = rep(r, 8000)
@@ -155,23 +159,28 @@ estimateR.weighted <- function(n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 
 
 r_est_weighted <- data.frame()
 
-for (baseline in c(1, 3, 5)){
-  for (r in c(1.1, 1.3, 1.5)){
+for (baseline in c(1, 3, 5)) {
+  for (r in c(1.1, 1.3, 1.5)) {
     r_est_weighted <- rbind(
-      r_est_weighted, estimateR.weighted(baseline = baseline, r = r))
+      r_est_weighted, estimateR.weighted(baseline = baseline, r = r)
+    )
   }
 }
 
 r_est_weighted %>% ggplot(aes(x = r_est, group = model, color = model)) +
   facet_grid(baseline ~ r,
-             labeller = labeller(baseline = label_both, r = label_both)) +
+    labeller = labeller(baseline = label_both, r = label_both)
+  ) +
   geom_vline(aes(xintercept = r), color = "black") +
   geom_density(size = 1) +
   labs(title = "n_i=1000, maf=0.1, r=1.5, phi=3, theta=30") +
   theme_bw() +
   scale_color_npg()
 
-# runtime analysis
+
+## runtime analysis
+
+# n_i
 
 estimateTime <- function(n_j, n_i = 1000, maf = 0.1, prob_ref = 0.5,
                          gene_pars = list(
@@ -231,6 +240,7 @@ runtime_n_i %>% ggplot(aes(x = n_i, y = warmup + sample, color = model)) +
   labs(x = "Number of samples", y = "Run time (warmup + sample, seconds)", color = "Model") +
   theme_bw()
 
+# n_j
 # J > 1, K = 1, L = 1
 
 Y <- simulateCisEffect.m2s(
@@ -270,11 +280,14 @@ runtime_n_j %>% ggplot(aes(x = n_j, y = warmup + sample, color = model)) +
   labs(x = "Number of genes", y = "Run time (warmup + sample, seconds)", color = "Model") +
   theme_bw()
 
-# phasing error
+
+##  models that include phasing error
+
+# runtime analysis
 
 Y <- simulateCisEffect.s2s(
   n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
-  phi = 3, theta = 100, baseline = 3, r = 1.5, p_error = 0.1
+  phi = 3, theta = 30, baseline = 3, r = 1.5, p_error = 0.1
 )
 
 fit_ase <- stan(
@@ -297,7 +310,120 @@ fit_ase_expect_known <- stan(
   data = Y$data
 ) # p_error for each sample
 
-fit_ase_expect_unknown <- stan(
-  file = "./src/stan_models/lognorm_with_phasing_error/ase_expect_unknown_error.stan",
-  data = Y$data
-) # not possible to have p_error for each sample
+# fit_ase_expect_unknown <- stan(
+#   file = "./src/stan_models/lognorm_with_phasing_error/ase_expect_unknown_error.stan",
+#   data = Y$data
+# ) # not possible to have p_error for each sample
+
+runtime_p_error <- lapply(
+  list(fit_ase, fit_ase_mix_known, fit_ase_mix_unknown, fit_ase_expect_known),
+  get_elapsed_time
+) %>%
+  do.call(what = "rbind") %>%
+  as.data.frame() %>%
+  mutate(model = rep(c(
+    "basic", "mix_known_p_error", "mix_unknown_p_error",
+    "expect_known_p_error"
+  ), each = 4)) %>%
+  group_by(model) %>%
+  summarize(warmup = mean(warmup), sample = mean(sample)) %>%
+  pivot_longer(!model, names_to = "stage", values_to = "runtime")
+
+runtime_p_error %>% ggplot(aes(x = model, y = runtime, fill = stage)) +
+  geom_bar(position = "stack", stat = "identity", width = 0.5) +
+  labs(x = "ASE models", y = "Runtime (s)") +
+  scale_fill_npg() +
+  theme_bw()
+
+# r_est accuracy
+
+estimateR.p_error <- function(n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
+                              phi = 3, theta = 30, baseline = 3, r = 1.5, p_error = 0.1) {
+
+  Y <- simulateCisEffect.s2s(
+    n_i = n_i, maf = maf, prob_ref = prob_ref, prob_as = prob_as,
+    phi = phi, theta = theta, baseline = baseline, r = r, p_error = p_error
+  )
+
+  fit_ase <- stan(
+    file = "./src/stan_models/lognorm_ase.stan",
+    data = Y$data
+  )
+
+  fit_ase_mix_known <- stan(
+    file = "./src/stan_models/lognorm_with_phasing_error/ase_mixture_known_error.stan",
+    data = Y$data
+  ) # p_error for each sample
+
+  fit_ase_mix_unknown <- stan(
+    file = "./src/stan_models/lognorm_with_phasing_error/ase_mixture_unknown_error.stan",
+    data = Y$data
+  ) # not possible to have p_error for each sample
+
+  fit_ase_expect_known <- stan(
+    file = "./src/stan_models/lognorm_with_phasing_error/ase_expect_known_error.stan",
+    data = Y$data
+  ) # p_error for each sample
+
+  return(
+    data.frame(
+      r_est = c(
+        rstan::extract(fit_ase, "r")[[1]],
+        rstan::extract(fit_ase_mix_known, "r")[[1]],
+        rstan::extract(fit_ase_mix_unknown, "r")[[1]],
+        rstan::extract(fit_ase_expect_known, "r")[[1]]
+      ),
+      model = rep(c("ase", "ase_mix_known", "ase_mix_unknown", "ase_expect_known"), each = 4000),
+      mean_p_error = mean(p_error),
+      r = r
+    )
+  )
+}
+
+r_est_p_error <- data.frame()
+
+for (p_error in c(0.05, 0.1, 0.2)) {
+  for (r in c(1.0, 1.2, 1.4, 1.6)) {
+    r_est_p_error <- rbind(
+      r_est_p_error, estimateR.p_error(p_error = p_error, r = r)
+    )
+  }
+}
+
+r_est_p_error %>% ggplot(aes(x = r_est, group = model, color = model)) +
+  facet_grid(mean_p_error ~ r,
+             labeller = labeller(mean_p_error = label_both, r = label_both)
+  ) +
+  geom_vline(aes(xintercept = r), color = "black") +
+  geom_density(size = 1) +
+  labs(title = "n_i=1000, maf=0.1, r=1.5, phi=3, theta=30") +
+  theme_bw() +
+  scale_color_npg()
+
+# varying p_error for each sample
+
+r_est_p_error_i <- data.frame()
+
+for (p_error in c(0.05, 0.1, 0.2)) {
+  p_error = p_error + rnorm(1000) / 10
+  p_error = ifelse(p_error > 1, 1, p_error)
+  p_error = ifelse(p_error < 0, 0, p_error)
+
+  for (r in c(1.0, 1.2, 1.4, 1.6)) {
+    r_est_p_error_i <- rbind(
+      r_est_p_error_i, estimateR.p_error(p_error = p_error, r = r)
+    )
+  }
+}
+
+r_est_p_error_i %>%
+  mutate(mean_p_error = rep(c(0.05, 0.1, 0.2), each = 16000*4)) %>%
+  ggplot(aes(x = r_est, group = model, color = model)) +
+  facet_grid(mean_p_error ~ r,
+             labeller = labeller(mean_p_error = label_both, r = label_both)
+  ) +
+  geom_vline(aes(xintercept = r), color = "black") +
+  geom_density(size = 1) +
+  labs(title = "var(p_error)=0.01, n_i=1000, maf=0.1, r=1.5, phi=3, theta=30") +
+  theme_bw() +
+  scale_color_npg()

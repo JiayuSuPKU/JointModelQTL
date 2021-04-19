@@ -13,7 +13,9 @@ simulateCisEffect.s2s(
   theta,
   baseline,
   r,
-  p_error = NULL
+  p_error = NULL,
+  origin = NULL,
+  origin.effect = NULL
 )
 }
 \arguments{
@@ -38,6 +40,13 @@ and ref/ref scenario}
 \item{p_error}{A vector of phasing error rate of the gene pair in each
 sample. If \code{length(p_error) == 1} then all samples share the same
 phasing error rate}
+
+\item{origin}{A vector specifying sample origin. If \code{NULL} then no two
+samples come from a same individual.}
+
+\item{origin.effect}{A vector specifying the effect of sample origin with
+length \code{n_indiv} (the number of samples). If \code{NULL} then no effect
+will be added.}
 }
 \description{
 This function simulates genotype G, phasing P, and expression

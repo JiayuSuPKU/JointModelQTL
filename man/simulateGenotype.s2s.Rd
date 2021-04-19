@@ -4,7 +4,7 @@
 \alias{simulateGenotype.s2s}
 \title{Simulate genotype for one gene-snp pair}
 \usage{
-simulateGenotype.s2s(n_i, maf, prob_ref)
+simulateGenotype.s2s(n_i, maf, prob_ref, origin = NULL)
 }
 \arguments{
 \item{n_i}{Number of samples}
@@ -13,6 +13,9 @@ simulateGenotype.s2s(n_i, maf, prob_ref)
 
 \item{prob_ref}{Probability of the test snp on the ref allele of the target
 gene if the test snp is heterogeneous}
+
+\item{origin}{A vector specifying sample origin. If \code{NULL} then no two
+samples come from a same individual.}
 }
 \description{
 This function simulates genotype G and phasing P for one gene-snp pair

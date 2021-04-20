@@ -1,5 +1,3 @@
-source("./R/simulation.R")
-
 library(tidyverse)
 library(ggsci)
 library(ggrepel)
@@ -339,7 +337,6 @@ runtime_p_error %>% ggplot(aes(x = model, y = runtime, fill = stage)) +
 
 estimateR.p_error <- function(n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
                               phi = 3, theta = 30, baseline = 3, r = 1.5, p_error = 0.1) {
-
   Y <- simulateCisEffect.s2s(
     n_i = n_i, maf = maf, prob_ref = prob_ref, prob_as = prob_as,
     phi = phi, theta = theta, baseline = baseline, r = r, p_error = p_error
@@ -392,7 +389,7 @@ for (p_error in c(0.05, 0.1, 0.2)) {
 
 r_est_p_error %>% ggplot(aes(x = r_est, group = model, color = model)) +
   facet_grid(mean_p_error ~ r,
-             labeller = labeller(mean_p_error = label_both, r = label_both)
+    labeller = labeller(mean_p_error = label_both, r = label_both)
   ) +
   geom_vline(aes(xintercept = r), color = "black") +
   geom_density(size = 1) +
@@ -405,9 +402,9 @@ r_est_p_error %>% ggplot(aes(x = r_est, group = model, color = model)) +
 r_est_p_error_i <- data.frame()
 
 for (p_error in c(0.05, 0.1, 0.2)) {
-  p_error = p_error + rnorm(1000) / 10
-  p_error = ifelse(p_error > 1, 1, p_error)
-  p_error = ifelse(p_error < 0, 0, p_error)
+  p_error <- p_error + rnorm(1000) / 10
+  p_error <- ifelse(p_error > 1, 1, p_error)
+  p_error <- ifelse(p_error < 0, 0, p_error)
 
   for (r in c(1.0, 1.2, 1.4, 1.6)) {
     r_est_p_error_i <- rbind(
@@ -417,10 +414,10 @@ for (p_error in c(0.05, 0.1, 0.2)) {
 }
 
 r_est_p_error_i %>%
-  mutate(mean_p_error = rep(c(0.05, 0.1, 0.2), each = 16000*4)) %>%
+  mutate(mean_p_error = rep(c(0.05, 0.1, 0.2), each = 16000 * 4)) %>%
   ggplot(aes(x = r_est, group = model, color = model)) +
   facet_grid(mean_p_error ~ r,
-             labeller = labeller(mean_p_error = label_both, r = label_both)
+    labeller = labeller(mean_p_error = label_both, r = label_both)
   ) +
   geom_vline(aes(xintercept = r), color = "black") +
   geom_density(size = 1) +

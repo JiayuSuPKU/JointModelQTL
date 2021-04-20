@@ -64,6 +64,8 @@ simulateGenotype.s2s <- function(n_i, maf, prob_ref, origin = NULL) {
   n_indiv <- length(unique(origin))
   stopifnot(n_indiv > 1)
 
+  origin <- as.numeric(factor(origin))
+
   h1 <- rbinom(n = n_indiv, size = 1, prob = maf)
   h2 <- rbinom(n = n_indiv, size = 1, prob = maf)
   # G: n_indiv by 1, genotype matrix
@@ -71,14 +73,16 @@ simulateGenotype.s2s <- function(n_i, maf, prob_ref, origin = NULL) {
 
   # P: n_indiv by 1, phasing matrix
   P <- ifelse(G == 1, 1, 0)
-  is_cis <- (runif(n_i) <= prob_ref) * 2 - 1
+  is_cis <- (runif(n_indiv) <= prob_ref) * 2 - 1
   P <- P * is_cis
 
   # calculate G and P for each sample
   G_tilta <- G[origin]
   P_tilta <- P[origin]
 
-  return(list(Genotype = G, Phasing = P, origin = origin))
+  return(list(
+    Genotype = G_tilta, Phasing = P_tilta,
+    Origin = origin, N_indiv = n_indiv))
 }
 
 
@@ -122,7 +126,7 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
 
   # simulate confounding factors on total read counts
   if (!is.null(origin.effect)) {
-    log_mu <- log_mu + origin.effect[meta$origin]
+    log_mu <- log_mu + origin.effect[meta$Origin]
   }
 
 
@@ -165,6 +169,7 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
     ),
     data = list(
       I = n_i,
+      N_indiv = meta$N_indiv,
       P = meta$Phasing,
       P_error = p_error,
       G = meta$Genotype,
@@ -173,7 +178,7 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
       A_ref = Y$RefCounts,
       A_alt = Y$AltCounts,
       Is_ase_het = Y$RefCounts * Y$AltCounts != 0,
-      Ori = meta$origin
+      Ori = meta$Origin
     )
   )
 

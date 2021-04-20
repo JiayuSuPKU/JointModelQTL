@@ -15,7 +15,8 @@ simulateCisEffect.s2s(
   r,
   p_error = NULL,
   origin = NULL,
-  origin.effect = NULL
+  origin.effect = NULL,
+  lib.size = NULL
 )
 }
 \arguments{
@@ -47,6 +48,9 @@ samples come from a same individual.}
 \item{origin.effect}{A vector specifying the effect of sample origin with
 length \code{n_indiv} (the number of samples). If \code{NULL} then no effect
 will be added.}
+
+\item{lib.size}{A vector of the relative library size of each sample. If
+\code{NULL} then no adjustment will be made.}
 }
 \description{
 This function simulates genotype G, phasing P, and expression

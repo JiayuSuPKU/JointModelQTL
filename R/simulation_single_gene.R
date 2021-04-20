@@ -109,11 +109,14 @@ softmax <- function(x) {
 #' @param origin.effect A vector specifying the effect of sample origin with
 #' length \code{n_indiv} (the number of samples). If \code{NULL} then no effect
 #' will be added.
+#' @param lib.size A vector of the relative library size of each sample. If
+#' \code{NULL} then no adjustment will be made.
 #'
 #' @export
 simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
                                   theta, baseline, r, p_error = NULL,
-                                  origin = NULL, origin.effect = NULL) {
+                                  origin = NULL, origin.effect = NULL,
+                                  lib.size = NULL) {
 
   # simulate genotype
   meta <- simulateGenotype.s2s(
@@ -124,11 +127,15 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
   log_mu <- baseline + ifelse(meta$Genotype == 1, log(1 + exp(r)) - log(2), 0) +
     ifelse(meta$Genotype == 2, r, 0)
 
-  # simulate confounding factors on total read counts
+  # simulate individual effect on total read counts
   if (!is.null(origin.effect)) {
     log_mu <- log_mu + origin.effect[meta$Origin]
   }
 
+  # simulate library size effect on total read counts
+  if (!is.null(lib.size)) {
+    log_mu <- log_mu + lib.size
+  }
 
   # simulate genetic effects on allelic imbalance
   logit_prob_alt <- meta$Phasing * r
@@ -165,7 +172,8 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
       r = r
     ),
     conf_pars = list(
-      origin.effect = origin.effect
+      origin.effect = origin.effect,
+      lib.size = lib.size
     ),
     data = list(
       I = n_i,
@@ -178,7 +186,8 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
       A_ref = Y$RefCounts,
       A_alt = Y$AltCounts,
       Is_ase_het = Y$RefCounts * Y$AltCounts != 0,
-      Ori = meta$Origin
+      Ori = meta$Origin,
+      Lib_size = lib.size
     )
   )
 

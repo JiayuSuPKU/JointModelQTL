@@ -34,3 +34,14 @@ data.frame(
   labs(title = "n=1000, maf=0.1, b=3, phi=3") +
   theme_bw()
 
+# add library size
+Y.2 <- simulateCisEffect.s2s(
+  n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
+  phi = 3, theta = 100, baseline = 3, r = 1.5,
+  lib.size = rnorm(1000)
+)
+
+fit_trc.2 <- stan(file = "./src/stan_models/lognorm_trc.stan", data = Y.2$data)
+
+fit_trc_indiv <- stan(file = "./src/stan_models/lognorm_confounding/trc_individual.stan", data = Y.1$data)
+

@@ -424,3 +424,44 @@ r_est_p_error_i %>%
   labs(title = "var(p_error)=0.01, n_i=1000, maf=0.1, r=1.5, phi=3, theta=30") +
   theme_bw() +
   scale_color_npg()
+
+## The expectation model has a tendency of overestimating R
+## Below are some intuitive analyses
+
+k_scale <- function(x, p){
+  return(
+    (1 - p - p*exp(-2*x))/(1 - p + p*exp(-2*x))
+  )
+}
+
+expect <- function(r_prime, p){
+  er = ((1 - p)*exp(r_prime) - p)/(1 - p - p*exp(r_prime))
+  return(log(er))
+}
+
+
+df_p_error <- data.frame()
+for (p in c(0, 0.05, 0.1, 0.2, 0.3, 0.4)){
+  x = seq(-5, 5, length.out = 1000)
+  k = k_scale(x = x, p = p)
+  r_prime = seq(0, 2, length.out = 1000)
+  r = expect(r_prime = r_prime, p = p)
+
+  df_p_error <- rbind(df_p_error, data.frame(x, k, r_prime, r, p))
+}
+
+df_p_error %>% mutate(p = factor(p)) %>%
+  ggplot(aes(x = x, y = k, group = p, color = p)) +
+  geom_line() +
+  labs(x = "x*mu/sigma^2", color = "p_error") +
+  scale_color_npg() +
+  theme_bw()
+
+df_p_error %>% mutate(p = factor(p)) %>%
+  ggplot(aes(x = r_prime, y = r, group = p, color = p)) +
+  geom_line() +
+  labs(x = "R\'", y = "R", color = "p_error") +
+  scale_color_npg() +
+  theme_bw()
+
+

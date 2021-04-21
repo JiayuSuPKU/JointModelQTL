@@ -16,7 +16,9 @@ simulateCisEffect.s2s(
   p_error = NULL,
   origin = NULL,
   origin.effect = NULL,
-  lib.size = NULL
+  lib.size = NULL,
+  confounder = NULL,
+  confounder.effect = NULL
 )
 }
 \arguments{
@@ -47,10 +49,15 @@ samples come from a same individual.}
 
 \item{origin.effect}{A vector specifying the effect of sample origin with
 length \code{n_indiv} (the number of samples). If \code{NULL} then no effect
-will be added.}
+will be added}
 
 \item{lib.size}{A vector of the relative library size of each sample. If
-\code{NULL} then no adjustment will be made.}
+\code{NULL} then no adjustment will be made}
+
+\item{confounder}{A n_i by N matrix where N is the number of confounding factors}
+
+\item{confounder.effect}{A vector specifying the effect of each confounding factor
+If \code{NULL} then no effect will be added}
 }
 \description{
 This function simulates genotype G, phasing P, and expression

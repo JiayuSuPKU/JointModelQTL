@@ -108,15 +108,19 @@ softmax <- function(x) {
 #' phasing error rate
 #' @param origin.effect A vector specifying the effect of sample origin with
 #' length \code{n_indiv} (the number of samples). If \code{NULL} then no effect
-#' will be added.
+#' will be added
 #' @param lib.size A vector of the relative library size of each sample. If
-#' \code{NULL} then no adjustment will be made.
+#' \code{NULL} then no adjustment will be made
+#' @param confounder A n_i by N matrix where N is the number of confounding factors
+#' @param confounder.effect A vector specifying the effect of each confounding factor
+#' If \code{NULL} then no effect will be added
 #'
 #' @export
 simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
                                   theta, baseline, r, p_error = NULL,
                                   origin = NULL, origin.effect = NULL,
-                                  lib.size = NULL) {
+                                  lib.size = NULL,
+                                  confounder = NULL, confounder.effect = NULL) {
 
   # simulate genotype
   meta <- simulateGenotype.s2s(
@@ -135,6 +139,14 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
   # simulate library size effect on total read counts
   if (!is.null(lib.size)) {
     log_mu <- log_mu + lib.size
+  }
+
+  # simulate confounding effect on total read counts
+  if (!is.null(confounder.effect)){
+    # check confounder dimensions
+    stopifnot(length(confounder.effect) == ncol(confounder))
+
+    log_mu <- log_mu + confounder %*% confounder.effect
   }
 
   # simulate genetic effects on allelic imbalance
@@ -173,11 +185,13 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
     ),
     conf_pars = list(
       origin.effect = origin.effect,
-      lib.size = lib.size
+      lib.size = lib.size,
+      confounder.effect = confounder.effect
     ),
     data = list(
       I = n_i,
       N_indiv = meta$N_indiv,
+      N = ncol(confounder),
       P = meta$Phasing,
       P_error = p_error,
       G = meta$Genotype,
@@ -187,7 +201,8 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
       A_alt = Y$AltCounts,
       Is_ase_het = Y$RefCounts * Y$AltCounts != 0,
       Ori = meta$Origin,
-      Lib_size = lib.size
+      Lib_size = lib.size,
+      X = confounder
     )
   )
 

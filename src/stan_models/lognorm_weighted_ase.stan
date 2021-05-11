@@ -31,11 +31,13 @@ parameters {
 
 model {
   vector[I] mu_a;
+  vector[I] sigma_a_scaled;
   mu_a = P * r;
+  sigma_a_scaled = sigma_a ./ inv_logit((A_ref + A_alt) - 5);
 
   for (i in 1:I){
     if (Is_ase_het[i] == 1){
-      target += normal_lpdf(logit_pi_alt[i] | mu_a[i], sigma_a / (A_ref[i] + A_alt[i]));
+      target += normal_lpdf(logit_pi_alt[i] | mu_a[i], sigma_a_scaled[i]);
     }
   }
 }

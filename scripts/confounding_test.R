@@ -253,7 +253,7 @@ for (n_indiv in c(10, 50, 100, 200, 500, 1000)){
 }
 
 r_est_lbfgs %>%
-  ggplot(aes(x = r, y = r_est, color = model)) +
+  ggplot(aes(x = r, y = r_est, color = model, group = model)) +
   facet_wrap(~ n_indiv, labeller = label_both) +
   geom_point() +
   ylim(-2, 2) +
@@ -311,7 +311,7 @@ Y.multi <- simulateCisEffect.s2s(
 
 fit_trc <- stan(file = "./src/stan_models/lognorm_trc.stan", data = Y.multi$data)
 fit_trc_x <- stan(
-  file = "./src/stan_models/lognorm_confounding/trc_fixed_effects.stan",
+  file = "./src/stan_models/lognorm_confounding/trc_multi_cov_fe.stan",
   data = Y.multi$data
 )
 traceplot(fit_trc_x, pars = "beta")

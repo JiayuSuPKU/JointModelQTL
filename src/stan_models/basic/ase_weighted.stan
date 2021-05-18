@@ -1,15 +1,4 @@
 functions {
-   real cis_reg_effect(real G, real r){
-     // G genotype
-     // r cis-regulatory effect, also log read ratio
-      if (G == 2)
-        return r;
-      else if (G == 1)
-        return log(1 + exp(r)) - log(2);
-      else
-        return 0; 
-   }
-
    real scale_sigma(real sigma_a, real A_ref, real A_alt, real ceiling){
       return sigma_a ./ fmin(A_ref + A_alt, ceiling);
    }
@@ -17,10 +6,6 @@ functions {
 
 data {
   int<lower=0> I; // number of samples
-  // int<lower=0> J; // number of genes
-  // int<lower=0> K; // number of test snps
-  // int<lower=0> L; // number of exonic snps 
-  vector[I] G; // genotype
   vector[I] P; // phasing
   vector[I] Is_ase_het; // whether the gene region is heterogeneous
   vector[I] logit_pi_alt; // logit of the proportion of alt reads

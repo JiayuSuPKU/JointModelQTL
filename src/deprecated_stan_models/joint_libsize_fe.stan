@@ -12,34 +12,35 @@ functions {
 }
 
 data {
-  int<lower=0> I; // number of samples
-  // int<lower=0> J; // number of genes
-  // int<lower=0> K; // number of test snps
-  // int<lower=0> L; // number of exonic snps 
-  int<lower=0> N_indiv; // number of individuals
+  int<lower=0> I; // number of samples  
   vector[I] G; // genotype
+  vector[I] P; // phasing
   vector<lower=0>[I] log1p_T; // log1p of total read counts
-  int Ori[I]; // sample origin
+  vector[I] Is_ase_het; // whether the gene region is heterogeneous
+  vector[I] logit_pi_alt; // logit of the proportion of alt reads
+  vector[I] Lib_size; // relative library size
 }
 
 parameters {
   real<lower=0> b; // baseline expression
   real r; // cis-regulated effect
   real<lower=0> sigma_t; // variance of total read counts (log-scale)
-
-  vector[N_indiv] beta; // individual effect
-  // real<lower=0> sigma_beta; sigma_beta cannot be separated with sigma_t 
+  real<lower=0> sigma_a; // ase variance
+  real beta; // effect size library size 
 }
 
 model {
   vector[I] mu_t;
+  vector[I] mu_a;
+  mu_t = b + Lib_size * beta;
+  mu_a = P * r;
 
   for (i in 1:I){
-    mu_t[i] = b + beta[Ori[i]] + cis_reg_effect(G[i], r);
+    mu_t[i] += cis_reg_effect(G[i], r);
+    if (Is_ase_het[i] == 1){
+      target += normal_lpdf(logit_pi_alt[i] | mu_a[i], sigma_a);
+    }
   }
 
-  beta ~ normal(0, 1); // prior on beta
-  
   log1p_T ~ normal(mu_t, sigma_t);
 }
-

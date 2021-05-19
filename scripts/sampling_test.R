@@ -324,8 +324,8 @@ runtime_p_error %>% ggplot(aes(x = model, y = runtime, fill = stage)) +
 # sensitivity of r_est on phasing error
 r_est_p_error <- data.frame()
 
-for (p_error in c(0.05, 0.1, 0.2)) {
-  for (r in c(0.2, 0.4, 0.6, 0.8)) {
+for (p_error in c(0.05, 0.15, 0.25)) {
+  for (r in c(0.3, 0.6, 0.9)) {
     r_normal <- sensitivityRPosterior(p_error = p_error, r = r)
     r_normal <- r_normal %>% mutate(mixture = "null", mean_p_error = p_error, r = r)
 

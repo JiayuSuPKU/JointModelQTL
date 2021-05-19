@@ -1,7 +1,6 @@
 library(tidyverse)
 library(ggsci)
 library(ggrepel)
-library(bridgesampling)
 library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
@@ -9,8 +8,6 @@ rstan_options(auto_write = TRUE)
 stan_models <- load_models()
 
 ### J = 1, K = 1, L = 1
-
-## sensitivity of R estimation
 
 Y <- simulateCisEffect.s2s(
   n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
@@ -23,8 +20,10 @@ results <- estimateCisRegEffects(
   significance_test = F
 )
 
+## sensitivity of R estimation
+
 # helper function to test the sensitivity of the estimation of R posterior
-sensitivityRPosterior <- function(weighted_ase = FALSE, include_phasing_error = FALSE,
+sensitivityRPosterior <- function(weighted_ase = FALSE, phasing_error = "null",
                                   n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
                                   phi = 3, theta = 30, baseline = 3, r = 0.5, ...) {
 
@@ -35,38 +34,23 @@ sensitivityRPosterior <- function(weighted_ase = FALSE, include_phasing_error = 
   trc <- estimateCisRegEffects(
     data = Y$data, stan_models = stan_models,
     model = "trc", method = "sampling",
-    return_posterior = "full", significance_test = F
+    return_posterior = "full", significance_test = F,
+    weighted_ase = weighted_ase, phasing_error = phasing_error
   )
 
-  if (!include_phasing_error){
-    joint <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "joint", method = "sampling",
-      return_posterior = "full", significance_test = F,
-      weighted_ase = weighted_ase
-    )
+  joint <- estimateCisRegEffects(
+    data = Y$data, stan_models = stan_models,
+    model = "joint", method = "sampling",
+    return_posterior = "full", significance_test = F,
+    weighted_ase = weighted_ase, phasing_error = phasing_error
+  )
 
-    ase <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "ase", method = "sampling",
-      return_posterior = "full", significance_test = F,
-      weighted_ase = weighted_ase
-    )
-  } else {
-    joint <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "joint", method = "sampling",
-      return_posterior = "full", significance_test = F,
-      weighted_ase = weighted_ase, phasing_error = "known"
-    )
-
-    ase <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "ase", method = "sampling",
-      return_posterior = "full", significance_test = F,
-      weighted_ase = weighted_ase, phasing_error = "known"
-    )
-  }
+  ase <- estimateCisRegEffects(
+    data = Y$data, stan_models = stan_models,
+    model = "ase", method = "sampling",
+    return_posterior = "full", significance_test = F,
+    weighted_ase = weighted_ase, phasing_error = phasing_error
+  )
 
   return(rbind(joint, trc, ase))
 }
@@ -343,16 +327,19 @@ r_est_p_error <- data.frame()
 for (p_error in c(0.05, 0.1, 0.2)) {
   for (r in c(0.2, 0.4, 0.6, 0.8)) {
     r_normal <- sensitivityRPosterior(p_error = p_error, r = r)
-    r_normal <- r_normal %>% mutate(mixture = 0, mean_p_error = p_error, r = r)
+    r_normal <- r_normal %>% mutate(mixture = "null", mean_p_error = p_error, r = r)
 
-    r_p <- sensitivityRPosterior(include_phasing_error = TRUE, p_error = p_error, r = r)
-    r_p <- r_p %>% mutate(mixture = 1, mean_p_error = p_error, r = r)
+    r_p_k <- sensitivityRPosterior(phasing_error = "known", p_error = p_error, r = r)
+    r_p_k <- r_p_k %>% mutate(mixture = "known", mean_p_error = p_error, r = r)
 
-    r_est_p_error <- rbind(r_est_p_error, r_normal, r_p)
+    r_p_u <- sensitivityRPosterior(phasing_error = "unknown", p_error = p_error, r = r)
+    r_p_u <- r_p_u %>% mutate(mixture = "unknown", mean_p_error = p_error, r = r)
+
+    r_est_p_error <- rbind(r_est_p_error, r_normal, r_p_k, r_p_u)
   }
 }
 
-g3 <- r_est_p_error %>% filter(mixture == 0) %>%
+g3 <- r_est_p_error %>% filter(mixture == "null") %>%
   ggplot(aes(x = r_est, group = model, color = model)) +
   facet_grid(mean_p_error ~ r,
     labeller = labeller(mean_p_error = label_both, r = label_both)
@@ -363,56 +350,27 @@ g3 <- r_est_p_error %>% filter(mixture == 0) %>%
   theme_bw() +
   scale_color_npg()
 
-g4 <- r_est_p_error %>% filter(mixture == 1) %>%
+g4 <- r_est_p_error %>% filter(mixture == "known") %>%
   ggplot(aes(x = r_est, group = model, color = model)) +
   facet_grid(mean_p_error ~ r,
              labeller = labeller(mean_p_error = label_both, r = label_both)
   ) +
   geom_vline(aes(xintercept = r), color = "black") +
   geom_density(size = 1) +
-  labs(title = "Mixture Models") +
+  labs(title = "Mixture Models (known)") +
   theme_bw() +
   scale_color_npg()
 
-cowplot::plot_grid(g3, g4)
+g5 <- r_est_p_error %>% filter(mixture == "unknown") %>%
+  ggplot(aes(x = r_est, group = model, color = model)) +
+  facet_grid(mean_p_error ~ r,
+             labeller = labeller(mean_p_error = label_both, r = label_both)
+  ) +
+  geom_vline(aes(xintercept = r), color = "black") +
+  geom_density(size = 1) +
+  labs(title = "Mixture Models (unknown)") +
+  theme_bw() +
+  scale_color_npg()
 
+cowplot::plot_grid(g3, g4, g5, nrow = 1)
 
-
-## The expectation model has a tendency of overestimating R
-## Below are some intuitive analyses
-
-k_scale <- function(x, p){
-  return(
-    (1 - p - p*exp(-2*x))/(1 - p + p*exp(-2*x))
-  )
-}
-
-expect <- function(r_prime, p){
-  er = ((1 - p)*exp(r_prime) - p)/(1 - p - p*exp(r_prime))
-  return(log(er))
-}
-
-
-df_p_error <- data.frame()
-for (p in c(0, 0.05, 0.1, 0.2, 0.3, 0.4)){
-  x = seq(-5, 5, length.out = 1000)
-  k = k_scale(x = x, p = p)
-  r_prime = seq(0, 2, length.out = 1000)
-  r = expect(r_prime = r_prime, p = p)
-
-  df_p_error <- rbind(df_p_error, data.frame(x, k, r_prime, r, p))
-}
-
-df_p_error %>% mutate(p = factor(p)) %>%
-  ggplot(aes(x = x, y = k, group = p, color = p)) +
-  geom_line() +
-  labs(x = "x*mu/sigma^2", color = "p_error") +
-  scale_color_npg() +
-  theme_bw()
-
-df_p_error %>% mutate(p = factor(p)) %>%
-  ggplot(aes(x = r_prime, y = r, group = p, color = p)) +
-  geom_line() +
-  labs(x = "R\'", y = "R", color = "p_error") +
-  scale_color_npg() +
-  theme_bw()

@@ -103,7 +103,11 @@ softmax <- function(x) {
 #' @inheritParams simulateGenotype.s2s
 #' @param baseline Baseline expression (under ref/ref scenario)
 #' @param r Cis-regulatory effect defined as the log read ratio under alt/alt
-#' and ref/ref scenario
+#' and ref/ref scenario. If \code{NULL} then the cis-regulatory effect will be
+#' condition-specific (specified by \code{cond} and \code{r.cond.effect})
+#' @param cond A vector of condition each sample belongs to
+#' @param r.cond.effect A vector of length N_cond where N_cond is the number of
+#' conditions, specifying the condition-specific cis-regulatory effect
 #' @param p_error A vector of phasing error rate of the gene pair in each
 #' sample. If \code{length(p_error) == 1} then all samples share the same
 #' phasing error rate
@@ -118,7 +122,8 @@ softmax <- function(x) {
 #'
 #' @export
 simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
-                                  theta, baseline, r, p_error = NULL,
+                                  theta, baseline, p_error = NULL,
+                                  r = NULL, cond = NULL, r.cond.effect = NULL,
                                   origin = NULL, origin.effect = NULL,
                                   lib.size = NULL,
                                   confounder = NULL, confounder.effect = NULL) {
@@ -127,6 +132,12 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
   meta <- simulateGenotype.s2s(
     n_i = n_i, maf = maf, prob_ref = prob_ref, origin = origin
   )
+
+  # set condition-specific regulatory effects
+  if (is.null(r)){
+    stopifnot(!is.null(cond) & !is.null(r.cond.effect))
+    r <- r.cond.effect[cond]
+  }
 
   # simulate genetic effects on total read counts
   log_mu <- baseline + ifelse(meta$Genotype == 1, log(1 + exp(r)) - log(2), 0) +
@@ -182,7 +193,8 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
       phi = phi,
       theta = theta,
       baseline = baseline,
-      r = r
+      r = r,
+      cond = cond
     ),
     conf_pars = list(
       origin.effect = origin.effect,
@@ -192,6 +204,8 @@ simulateCisEffect.s2s <- function(n_i, maf, prob_ref, phi, prob_as,
     data = list(
       I = n_i,
       N_indiv = meta$N_indiv,
+      N_cond = length(unique(cond)),
+      Cond = cond,
       N = ncol(confounder),
       P = meta$Phasing,
       P_error = p_error,

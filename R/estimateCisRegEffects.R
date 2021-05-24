@@ -63,14 +63,17 @@ estimateCisRegEffects <- function(data, stan_models,
 
     if (significance_test) { # likelihood ratio test
       out <- out %>% mutate(
-        lr = -2 * (mle[[2]]$value - mle[[1]]$value),
+        lr = -2 * (mle[[2]]$par$sum_log_lik - mle[[1]]$par$sum_log_lik),
         df = 1,
         p_val = 1 - pchisq(q = lr, df = df)
       )
     }
   } else { ## posterior
     if (!significance_test) {
-      fit <- rstan::sampling(run_models[[1]], data = data, chain = 4, iter = 2000, refresh = 0)
+      fit <- rstan::sampling(run_models[[1]],
+        data = data, chain = 4, iter = 2000, refresh = 0,
+        include = FALSE, pars = c("mu_t", "mu_a", "log_lik", "sum_log_lik")
+      )
       if (return_posterior == "full") {
         out <- data.frame(r_est = rstan::extract(fit, pars = "r")[[1]])
       } else {
@@ -82,7 +85,10 @@ estimateCisRegEffects <- function(data, stan_models,
       out$model <- model
     } else { # bayes factor
       fit <- lapply(run_models, function(m) {
-        rstan::sampling(m, data = data, chain = 4, iter = 2000, refresh = 0)
+        rstan::sampling(m,
+          data = data, chain = 4, iter = 2000, refresh = 0,
+          include = FALSE, pars = c("mu_t", "mu_a", "log_lik", "sum_log_lik")
+        )
       })
       if (return_posterior == "full") {
         out <- data.frame(r_est = rstan::extract(fit[[1]], pars = "r")[[1]])

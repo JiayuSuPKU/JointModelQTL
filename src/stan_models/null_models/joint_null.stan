@@ -18,3 +18,18 @@ model {
   }
   log1p_T ~ normal(b, sigma_t);
 }
+
+generated quantities {
+  vector[I] log_lik = rep_vector(0, I);
+  real sum_log_lik;
+
+  for (i in 1:I){
+    log_lik[i] += normal_lpdf(log1p_T[i] | b, sigma_t);
+    if (Is_ase_het[i] == 1){
+      log_lik[i] += normal_lpdf(logit_pi_alt[i] | 0, sigma_a);
+    }
+  }
+
+  sum_log_lik = sum(log_lik);
+}
+

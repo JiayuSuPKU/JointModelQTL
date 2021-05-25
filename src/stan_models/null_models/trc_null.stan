@@ -11,3 +11,14 @@ parameters {
 model {
   log1p_T ~ normal(b, sigma_t);
 }
+
+generated quantities {
+  vector[I] log_lik = rep_vector(0, I);
+  real sum_log_lik;
+
+  for (i in 1:I){
+    log_lik[i] += normal_lpdf(log1p_T[i] | b, sigma_t);
+  }
+
+  sum_log_lik = sum(log_lik);
+}

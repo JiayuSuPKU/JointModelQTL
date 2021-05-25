@@ -6,7 +6,7 @@
 estimateCisRegEffects <- function(data, stan_models,
                                   model = "joint", method = "optimizing", significance_test = TRUE,
                                   phasing_error = "null", weighted_ase = FALSE, confounders = "null",
-                                  return_posterior = "full") {
+                                  return_posterior = "full", linear_trc = FALSE) {
   model <- match.arg(model, c("trc", "ase", "joint"))
   method <- match.arg(method, c("optimizing", "sampling"))
   phasing_error <- match.arg(phasing_error, c("null", "known", "unknown"))
@@ -26,6 +26,11 @@ estimateCisRegEffects <- function(data, stan_models,
           "unknown" = c(stan_models$phasing_error$joint_mixture_unknown, stan_models$null_models$joint_null) %>% list()
         )
       )
+      run_models <- ifelse(
+        linear_trc,
+        c(stan_models$linear$joint_linear, stan_models$null_models$joint_null) %>% list(),
+        run_models
+      )
     } else if (confounders == "fixed") { # fixed-effect confounders
       run_models <- c(stan_models$confounders$joint_multi_fe, stan_models$null_models$joint_multi_fe_null) %>% list()
     } else { # random-effect confounders
@@ -36,6 +41,11 @@ estimateCisRegEffects <- function(data, stan_models,
       "null" = c(stan_models$basic$trc, stan_models$null_models$trc_null) %>% list(),
       "fixed" = c(stan_models$confounders$trc_multi_fe, stan_models$null_models$trc_multi_fe_null) %>% list(),
       "random" = c(stan_models$confounders$trc_indiv_re, stan_models$null_models$trc_indiv_re_null) %>% list()
+    )
+    run_models <- ifelse(
+      linear_trc,
+      c(stan_models$linear$trc_linear, stan_models$null_models$trc_null) %>% list(),
+      run_models
     )
   } else { ## allele-specific component only
     run_models <- ifelse(

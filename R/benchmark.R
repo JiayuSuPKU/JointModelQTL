@@ -1,6 +1,8 @@
 # helper function to test the sensitivity of the estimation of R
-sensitivityR <- function(method = "sampling", return_posterior = "full",
-                         significance_test = F, weighted_ase = FALSE, phasing_error = "null",
+sensitivityR <- function(models = c("trc", "ase", "joint"),
+                         method = "sampling", return_posterior = "full",
+                         significance_test = F, weighted_ase = FALSE,
+                         linear_trc = FALSE, phasing_error = "null",
                          n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
                          phi = 3, theta = 30, baseline = 3, r = 0.5, ...) {
   n_rep <- ifelse(method == "sampling", 1, 200)
@@ -11,39 +13,28 @@ sensitivityR <- function(method = "sampling", return_posterior = "full",
       phi = phi, theta = theta, baseline = baseline, r = r, ...
     )
 
-    trc <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "trc", method = method, return_posterior = return_posterior,
-      significance_test = significance_test,
-      weighted_ase = weighted_ase, phasing_error = phasing_error
-    )
-
-    joint <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "joint", method = method, return_posterior = return_posterior,
-      significance_test = significance_test,
-      weighted_ase = weighted_ase, phasing_error = phasing_error
-    )
-
-    ase <- estimateCisRegEffects(
-      data = Y$data, stan_models = stan_models,
-      model = "ase", method = method, return_posterior = return_posterior,
-      significance_test = significance_test,
-      weighted_ase = weighted_ase, phasing_error = phasing_error
-    )
-
-    rbind(joint, trc, ase)
+    lapply(models, function(m) {
+      estimateCisRegEffects(
+        data = Y$data, stan_models = stan_models,
+        model = m, method = method, return_posterior = return_posterior,
+        significance_test = significance_test,
+        weighted_ase = weighted_ase, linear_trc = linear_trc,
+        phasing_error = phasing_error
+      )
+    }) %>% do.call(what = "rbind")
   }) %>% do.call(what = "rbind")
 
   return(out)
 }
 
 # helper function to test for the runtime
-getRunTime <- function(method = "sampling", return_posterior = "full",
-                       significance_test = F, weighted_ase = FALSE, phasing_error = "null",
+getRunTime <- function(models = c("trc", "ase", "joint"),
+                       method = "sampling", return_posterior = "full",
+                       significance_test = F, weighted_ase = FALSE,
+                       linear_trc = FALSE, phasing_error = "null",
                        n_i = 1000, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
                        phi = 3, theta = 30, baseline = 3, r = 0.5, ...) {
-  out <- lapply(c("trc", "ase", "joint"), function(m) {
+  out <- lapply(models, function(m) {
     Y <- simulateCisEffect.s2s(
       n_i = n_i, maf = maf, prob_ref = prob_ref, prob_as = prob_as,
       phi = phi, theta = theta, baseline = baseline, r = r, ...
@@ -53,20 +44,22 @@ getRunTime <- function(method = "sampling", return_posterior = "full",
         data = Y$data, stan_models = stan_models,
         model = m, method = method, return_posterior = return_posterior,
         significance_test = significance_test,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
+        weighted_ase = weighted_ase, linear_trc = linear_trc,
+        phasing_error = phasing_error
       )
     })
   }) %>%
     do.call(what = "rbind") %>%
     as.data.frame() %>%
-    mutate(model = c("trc", "ase", "joint"))
+    mutate(model = models)
 
   return(out)
 }
 
 # helper function to test the fp of mle estimation
 testFalsePositive <- function(design_fp, stan_models, n_rep = 50,
-                              par = "baseline", weighted_ase = FALSE,
+                              models = c("trc", "ase", "joint"),
+                              par = "baseline", weighted_ase = FALSE, linear_trc = FALSE,
                               phasing_error = "null", confounders = "null") {
   out <- apply(design_fp[rep(1:nrow(design_fp), each = n_rep), ], 1, function(x) {
     sim_pars <- list(
@@ -83,28 +76,15 @@ testFalsePositive <- function(design_fp, stan_models, n_rep = 50,
     lapply(1:100, function(i) {
       Y <- do.call(simulateCisEffect.s2s, sim_pars)
 
-      joint <- estimateCisRegEffects(
-        data = Y$data, stan_models = stan_models,
-        model = "joint", method = "optimizing",
-        significance_test = T, confounders = confounders,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
-      )
-
-      trc <- estimateCisRegEffects(
-        data = Y$data, stan_models = stan_models,
-        model = "trc", method = "optimizing",
-        significance_test = T, confounders = confounders,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
-      )
-
-      ase <- estimateCisRegEffects(
-        data = Y$data, stan_models = stan_models,
-        model = "ase", method = "optimizing",
-        significance_test = T, confounders = confounders,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
-      )
-
-      return(rbind(joint, trc, ase))
+      lapply(models, function(m){
+        estimateCisRegEffects(
+          data = Y$data, stan_models = stan_models,
+          model = m, method = "optimizing",
+          significance_test = T, confounders = confounders,
+          weighted_ase = weighted_ase, linear_trc = linear_trc,
+          phasing_error = phasing_error
+        )
+      }) %>% do.call(what = "rbind")
     }) %>%
       do.call(what = "rbind") %>%
       mutate(n_i = x[1], !!par := x[2], r_true = 0)
@@ -114,8 +94,10 @@ testFalsePositive <- function(design_fp, stan_models, n_rep = 50,
 }
 
 # helper function to test the power of mle estimation
-testPower <- function(design_power, stan_models, par = "baseline",
-                      weighted_ase = FALSE, phasing_error = "null",
+testPower <- function(design_power, stan_models,
+                      models = c("trc", "ase", "joint"),
+                      par = "baseline",
+                      weighted_ase = FALSE, phasing_error = "null", linear_trc = FALSE,
                       confounders = "null") {
   out <- apply(design_power, 1, function(x) {
     lapply(1:100, function(i) {
@@ -131,28 +113,15 @@ testPower <- function(design_power, stan_models, par = "baseline",
 
       Y <- do.call(simulateCisEffect.s2s, sim_pars)
 
-      joint <- estimateCisRegEffects(
-        data = Y$data, stan_models = stan_models,
-        model = "joint", method = "optimizing",
-        significance_test = T, confounders = confounders,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
-      )
-
-      trc <- estimateCisRegEffects(
-        data = Y$data, stan_models = stan_models,
-        model = "trc", method = "optimizing",
-        significance_test = T, confounders = confounders,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
-      )
-
-      ase <- estimateCisRegEffects(
-        data = Y$data, stan_models = stan_models,
-        model = "ase", method = "optimizing",
-        significance_test = T, confounders = confounders,
-        weighted_ase = weighted_ase, phasing_error = phasing_error
-      )
-
-      return(rbind(joint, trc, ase))
+      lapply(models, function(m){
+        estimateCisRegEffects(
+          data = Y$data, stan_models = stan_models,
+          model = m, method = "optimizing",
+          significance_test = T, confounders = confounders,
+          weighted_ase = weighted_ase, linear_trc = linear_trc,
+          phasing_error = phasing_error
+        )
+      }) %>% do.call(what = "rbind")
     }) %>%
       do.call(what = "rbind") %>%
       mutate(n_i = x[1], !!par := x[2], r_true = x[3])

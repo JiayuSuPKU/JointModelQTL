@@ -26,7 +26,7 @@ estimateCisRegEffects <- function(data, stan_models,
           "unknown" = c(stan_models$phasing_error$joint_mixture_unknown, stan_models$null_models$joint_null) %>% list()
         )
       )
-      run_models <- ifelse(
+      run_models <- ifelse( # linear trc
         linear_trc,
         c(stan_models$linear$joint_linear, stan_models$null_models$joint_null) %>% list(),
         run_models
@@ -42,7 +42,7 @@ estimateCisRegEffects <- function(data, stan_models,
       "fixed" = c(stan_models$confounders$trc_multi_fe, stan_models$null_models$trc_multi_fe_null) %>% list(),
       "random" = c(stan_models$confounders$trc_indiv_re, stan_models$null_models$trc_indiv_re_null) %>% list()
     )
-    run_models <- ifelse(
+    run_models <- ifelse( # linear trc
       linear_trc,
       c(stan_models$linear$trc_linear, stan_models$null_models$trc_null) %>% list(),
       run_models
@@ -60,6 +60,11 @@ estimateCisRegEffects <- function(data, stan_models,
   }
 
   run_models <- run_models[[1]]
+
+  if (!significance_test) { # remove the null model
+    run_models <- run_models[[1]]
+  }
+
 
   if (method == "optimizing") { ## mle
     mle <- lapply(run_models, function(m) {
@@ -79,37 +84,25 @@ estimateCisRegEffects <- function(data, stan_models,
       )
     }
   } else { ## posterior
-    if (!significance_test) {
-      fit <- rstan::sampling(run_models[[1]],
+    fit <- lapply(run_models, function(m) {
+      rstan::sampling(m,
         data = data, chain = 4, iter = 2000, refresh = 0,
         include = FALSE, pars = c("mu_t", "mu_a", "log_lik", "sum_log_lik")
       )
-      if (return_posterior == "full") {
-        out <- data.frame(r_est = rstan::extract(fit, pars = "r")[[1]])
-      } else {
-        out <- data.frame(
-          r_est = list(rstan::extract(fit, pars = "r")[[1]]) %>%
-            do.call(what = return_posterior)
-        )
-      }
-      out$model <- model
-    } else { # bayes factor
-      fit <- lapply(run_models, function(m) {
-        rstan::sampling(m,
-          data = data, chain = 4, iter = 2000, refresh = 0,
-          include = FALSE, pars = c("mu_t", "mu_a", "log_lik", "sum_log_lik")
-        )
-      })
-      if (return_posterior == "full") {
-        out <- data.frame(r_est = rstan::extract(fit[[1]], pars = "r")[[1]])
-      } else {
-        out <- data.frame(
-          r_est = list(rstan::extract(fit[[1]], pars = "r")[[1]]) %>%
-            do.call(what = return_posterior)
-        )
-      }
+    })
 
-      out$model <- model
+    if (return_posterior == "full") {
+      out <- data.frame(r_est = rstan::extract(fit[[1]], pars = "r")[[1]])
+    } else {
+      out <- data.frame(
+        r_est = list(rstan::extract(fit[[1]], pars = "r")[[1]]) %>%
+          do.call(what = return_posterior)
+      )
+    }
+
+    out$model <- model
+
+    if (significance_test) { # bayes factor
       out$bf <- bridgesampling::bf(
         x1 = bridgesampling::bridge_sampler(fit[[2]], silent = T),
         x2 = bridgesampling::bridge_sampler(fit[[1]], silent = T)

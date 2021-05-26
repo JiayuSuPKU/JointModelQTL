@@ -9,9 +9,11 @@ load("./scripts/benchmark/basic.RData")
 
 stan_models <- load_models()
 
-pal_col <- c("ase" = pal_aaas()(10)[1],
-             "joint" = pal_aaas()(10)[2],
-             "trc" = pal_aaas()(10)[3])
+pal_col <- c(
+  "ase" = pal_aaas()(10)[1],
+  "joint" = pal_aaas()(10)[2],
+  "trc" = pal_aaas()(10)[3]
+)
 
 ## 1) Estimation accuracy
 
@@ -69,8 +71,8 @@ cowplot::plot_grid(g1, g2)
 # sampling
 r_est_sen.s <- data.frame()
 for (b in c(1, 3, 5)) {
-  for (n_i in c(100, 300, 500)){
-    r_est = sensitivityR(
+  for (n_i in c(100, 300, 500)) {
+    r_est <- sensitivityR(
       method = "sampling", return_posterior = "full",
       n_i = n_i, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
       phi = 3, theta = 30, baseline = b, r = 0.5
@@ -94,8 +96,8 @@ g1 <- r_est_sen.s %>%
 # optimizing
 r_est_sen.o <- data.frame()
 for (b in c(1, 3, 5)) {
-  for (n_i in c(100, 300, 500)){
-    r_est = sensitivityR(
+  for (n_i in c(100, 300, 500)) {
+    r_est <- sensitivityR(
       method = "optimizing",
       n_i = n_i, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
       phi = 3, theta = 30, baseline = b, r = 0.5
@@ -124,8 +126,8 @@ cowplot::plot_grid(g1, g2)
 
 # sampling
 runtime.s <- data.frame()
-for (n_i in c(100, 400, 800, 1600, 3200, 6400)){
-  runtime <- lapply(1:3, function(i){
+for (n_i in c(100, 400, 800, 1600, 3200, 6400)) {
+  runtime <- lapply(1:3, function(i) {
     runtime_notest <- getRunTime(
       method = "sampling", significance_test = F,
       n_i = n_i, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
@@ -149,16 +151,18 @@ g1 <- runtime.s %>%
   stat_smooth(aes(linetype = factor(sig_test)), method = "lm", formula = y ~ x, se = F) +
   scale_color_manual(values = pal_col) +
   ylim(c(0, 50)) +
-  labs(x = "Number of samples", y = "Total Run Time (seconds)",
-       color = "Model", shape = "+ LRT", linetype = "+ LRT",
-       title = "Runtime: Posterior") +
+  labs(
+    x = "Number of samples", y = "Total Run Time (seconds)",
+    color = "Model", shape = "+ LRT", linetype = "+ LRT",
+    title = "Runtime: Posterior"
+  ) +
   theme_bw()
 
 
 # optimizing
 runtime.o <- data.frame()
-for (n_i in c(100, 400, 800, 1600, 3200, 6400)){
-  runtime <- lapply(1:100, function(i){
+for (n_i in c(100, 400, 800, 1600, 3200, 6400)) {
+  runtime <- lapply(1:100, function(i) {
     runtime_notest <- getRunTime(
       method = "optimizing", significance_test = F,
       n_i = n_i, maf = 0.1, prob_ref = 0.5, prob_as = 0.5,
@@ -182,9 +186,11 @@ g2 <- runtime.o %>%
   stat_smooth(aes(linetype = factor(sig_test)), method = "lm", formula = y ~ x, se = F) +
   scale_color_manual(values = pal_col) +
   ylim(c(0, 0.3)) +
-  labs(x = "Number of samples", y = "Total Run Time (seconds)",
-       color = "Model", shape = "+ LRT", linetype = "+ LRT",
-       title = "Runtime: MLE") +
+  labs(
+    x = "Number of samples", y = "Total Run Time (seconds)",
+    color = "Model", shape = "+ LRT", linetype = "+ LRT",
+    title = "Runtime: MLE"
+  ) +
   theme_bw()
 
 cowplot::plot_grid(g1, g2)
@@ -239,7 +245,7 @@ cowplot::plot_grid(g1, g2)
 roc <- rbind(power.o, fp.o %>% group_by(n_i, baseline, model) %>% sample_n(2100)) %>%
   mutate(is_negative = r_true == 0)
 
-df_roc <- lapply(seq(0, 1.01, 0.01), function(threshold){
+df_roc <- lapply(seq(0, 1.01, 0.01), function(threshold) {
   roc %>%
     mutate(is_pred_positive = p_val < threshold) %>%
     group_by(n_i, baseline, model) %>%
@@ -247,7 +253,7 @@ df_roc <- lapply(seq(0, 1.01, 0.01), function(threshold){
       fp = mean(is_pred_positive[is_negative]),
       tp = mean(is_pred_positive[!is_negative])
     ) %>%
-    mutate(p_thresh= threshold)
+    mutate(p_thresh = threshold)
 }) %>% do.call(what = "rbind")
 
 df_roc %>%
